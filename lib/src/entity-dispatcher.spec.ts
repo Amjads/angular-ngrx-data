@@ -1,5 +1,5 @@
-import { EntityAction, EntityOp } from './entity.actions';
-import { EntityDispatcher } from './entity-dispatcher';
+import { EntityAction, EntityActionFactory, EntityOp } from './entity.actions';
+import { EntityDispatcher, EntityDispatcherFactory } from './entity-dispatcher';
 import { EntityCommands } from './entity-commands';
 import { Update } from './ngrx-entity-models';
 
@@ -10,7 +10,8 @@ describe('EntityDispatcher', () => {
   function entityDispatcherTestSetup() {
     const selectId = (entity: any) => entity.id;
     const testStore = new TestStore();
-    const dispatcher = new EntityDispatcher('Hero', <any> testStore, selectId)
+    const entityActionFactory = new EntityActionFactory();
+    const dispatcher = new EntityDispatcher('Hero', entityActionFactory, <any> testStore, selectId)
     return { dispatcher, testStore };
   }
 });

@@ -1,7 +1,7 @@
 import { Action } from '@ngrx/store';
 import { EntityAdapter } from '@ngrx/entity';
 
-import { EntityAction, EntityOp } from './entity.actions';
+import { EntityAction, EntityActionFactory, EntityOp } from './entity.actions';
 import { EntityCache } from './interfaces';
 import { EntityCollection } from './entity-definition';
 import { EntityDefinitionService } from './entity-definition.service';
@@ -24,6 +24,8 @@ const metadata: EntityMetadataMap = {
 }
 
 describe('EntityReducer', () => {
+  // factory never changes in these tests
+  const entityActionFactory = new EntityActionFactory();
   let entityReducer: (state: EntityCache, action: EntityAction) => EntityCache;
 
   let initialHeroes: Hero[];
@@ -38,13 +40,13 @@ describe('EntityReducer', () => {
 
   /** Initialize cache with a Hero collection using QUERY_ALL_SUCCESS */
   function initializeCache() {
-    const action = new EntityAction('Hero', EntityOp.QUERY_ALL_SUCCESS, initialHeroes);
+    const action = entityActionFactory.create('Hero', EntityOp.QUERY_ALL_SUCCESS, initialHeroes);
     return entityReducer({}, action);
   }
 
   describe('#QUERY_ALL', () => {
     it('QUERY_ALL sets loading flag but does not fill collection', () => {
-      const action = new EntityAction('Hero', EntityOp.QUERY_ALL);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_ALL);
       const state = entityReducer({}, action);
       const collection = state['Hero'];
       expect(collection.loading).toBe(true, 'should be loading');
@@ -56,7 +58,7 @@ describe('EntityReducer', () => {
         {id: 2, name: 'B'},
         {id: 1, name: 'A'},
       ];
-      const action = new EntityAction('Hero', EntityOp.QUERY_ALL_SUCCESS, heroes);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_ALL_SUCCESS, heroes);
       const state = entityReducer({}, action);
       const collection = state['Hero'];
       expect(collection.loading).toBe(false, 'should not be loading');
@@ -66,7 +68,7 @@ describe('EntityReducer', () => {
     });
 
     it('QUERY_ALL_ERROR clears loading flag and does not fill collection', () => {
-      const action = new EntityAction('Hero', EntityOp.QUERY_ALL_ERROR);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_ALL_ERROR);
       const state = entityReducer({}, action);
       const collection = state['Hero'];
       expect(collection.loading).toBe(false, 'should not be loading');
@@ -78,7 +80,7 @@ describe('EntityReducer', () => {
         {key: '2', name: 'B'},
         {key: '1', name: 'A'},
       ]
-      const action = new EntityAction('Villain', EntityOp.QUERY_ALL_SUCCESS, villains);
+      const action = entityActionFactory.create('Villain', EntityOp.QUERY_ALL_SUCCESS, villains);
       const state = entityReducer({}, action);
       const collection = state['Villain'];
       expect(collection.loading).toBe(false, 'should not be loading');
@@ -90,7 +92,7 @@ describe('EntityReducer', () => {
 
   describe('#QUERY_MANY', () => {
     it('QUERY_MANY sets loading flag but does not touch the collection', () => {
-      const action = new EntityAction('Hero', EntityOp.QUERY_MANY);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_MANY);
       const state = entityReducer({}, action);
       const collection = state['Hero'];
       expect(collection.loading).toBe(true, 'should be loading');
@@ -99,7 +101,7 @@ describe('EntityReducer', () => {
 
     it('QUERY_MANY_SUCCESS can create the initial collection', () => {
       const heroes: Hero[] = [{id: 3, name: 'C'}];
-      const action = new EntityAction('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
       const nextCache = entityReducer({}, action);
       const collection = nextCache['Hero'];
 
@@ -108,7 +110,7 @@ describe('EntityReducer', () => {
 
     it('QUERY_MANY_SUCCESS can add to existing collection', () => {
       const heroes: Hero[] = [{id: 3, name: 'C'}];
-      const action = new EntityAction('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
       const nextCache = entityReducer(initialCache, action);
       const collection = nextCache['Hero'];
 
@@ -117,7 +119,7 @@ describe('EntityReducer', () => {
 
     it('QUERY_MANY_SUCCESS can update existing collection', () => {
       const heroes: Hero[] = [{id: 1, name: 'A+'}];
-      const action = new EntityAction('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
       const nextCache = entityReducer(initialCache, action);
       const collection = nextCache['Hero'];
 
@@ -130,7 +132,7 @@ describe('EntityReducer', () => {
         {id: 3, name: 'C'},
         {id: 1, name: 'A+'},
       ];
-      const action = new EntityAction('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
       const nextCache = entityReducer(initialCache, action);
       const collection = nextCache['Hero'];
 
@@ -140,7 +142,7 @@ describe('EntityReducer', () => {
 
     it('QUERY_MANY_SUCCESS works when the query results are empty', () => {
       const heroes: Hero[] = [];
-      const action = new EntityAction('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_MANY_SUCCESS, heroes);
       const nextCache = entityReducer(initialCache, action);
       const collection = nextCache['Hero'];
 
@@ -172,7 +174,7 @@ describe('EntityReducer', () => {
         {id: 2, name: 'B'},
         {id: 1, name: 'A'},
       ];
-      const action = new EntityAction('Hero', EntityOp.QUERY_ALL_SUCCESS, heroes);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_ALL_SUCCESS, heroes);
       const state = entityReducer({}, action);
       const collection = state['Hero'];
       expect(collection.loading).toBe(false, 'should not be loading');
@@ -182,7 +184,7 @@ describe('EntityReducer', () => {
     });
 
     it('QUERY_ALL_ERROR clears loading flag and does not fill collection', () => {
-      const action = new EntityAction('Hero', EntityOp.QUERY_ALL_ERROR);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_ALL_ERROR);
       const state = entityReducer({}, action);
       const collection = state['Hero'];
       expect(collection.loading).toBe(false, 'should not be loading');
@@ -194,7 +196,7 @@ describe('EntityReducer', () => {
         {key: '2', name: 'B'},
         {key: '1', name: 'A'},
       ]
-      const action = new EntityAction('Villain', EntityOp.QUERY_ALL_SUCCESS, villains);
+      const action = entityActionFactory.create('Villain', EntityOp.QUERY_ALL_SUCCESS, villains);
       const state = entityReducer({}, action);
       const collection = state['Villain'];
       expect(collection.loading).toBe(false, 'should not be loading');
@@ -204,13 +206,13 @@ describe('EntityReducer', () => {
     });
 
     it('QUERY_MANY is illegal for "Hero" collection', () => {
-      const action = new EntityAction('Hero', EntityOp.QUERY_MANY);
+      const action = entityActionFactory.create('Hero', EntityOp.QUERY_MANY);
       expect(() => entityReducer({}, action) )
         .toThrowError(/illegal operation for the "Hero" collection/);
     });
 
     it('QUERY_MANY still works for "Villain" collection', () => {
-      const action = new EntityAction('Villain', EntityOp.QUERY_MANY);
+      const action = entityActionFactory.create('Villain', EntityOp.QUERY_MANY);
       const state = entityReducer({}, action);
       const collection = state['Villain'];
       expect(collection.loading).toBe(true, 'should be loading');

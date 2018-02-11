@@ -3,7 +3,7 @@ import { createFeatureSelector, createSelector, Selector, Store } from '@ngrx/st
 import { Observable } from 'rxjs/Observable';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 
-import { EntityCache, ENTITY_CACHE_NAME } from './interfaces';
+import { EntityCache } from './interfaces';
 import { EntityCollection } from './entity-definition';
 import { EntityMetadata, EntityMetadataMap } from './entity-metadata';
 import { PropsFilterFnFactory } from './entity-filters';
@@ -11,13 +11,11 @@ import { createEntitySelectors, EntitySelectors } from './entity.selectors';
 
 import {
   createCachedCollectionSelector,
-  createEntitySelectors$,
-  EntitySelectors$
+  EntitySelectors$,
+  EntitySelectors$Factory
 } from './entity.selectors$';
 
 describe('EntitySelectors$', () => {
-
-  const entityCacheSelector = createFeatureSelector<EntityCache>(ENTITY_CACHE_NAME);
 
   /** HeroMetadata identifies extra collection state properties */
   const heroMetadata: EntityMetadata<Hero> = {
@@ -34,7 +32,7 @@ describe('EntitySelectors$', () => {
     selectId: (entity: Villain) => entity.key
   }
 
-  describe('#createCachedCollectionSelector', () => {
+  describe('createCachedCollectionSelector', () => {
 
     const initialState: HeroCollection = {
       ids: [1],
@@ -44,6 +42,8 @@ describe('EntitySelectors$', () => {
       foo: 'foo foo',
       bar: 42
     };
+
+    const entityCacheSelector = createFeatureSelector<EntityCache>('entityCache');
 
     it('creates collection selector that defaults to initial state', () => {
       const selector = createCachedCollectionSelector(
@@ -90,20 +90,17 @@ describe('EntitySelectors$', () => {
   });
 
   // Hero has a super-set of EntitySelectors$
-  describe('#createEntitySelectors$ (Hero)', () => {
-    // The store during tests will be the entity cache
-    let store: Store<EntityCache>;
-
-    // Therefore, the cache selector returns the store itself
-    const cacheSelector = (s: EntityCache) => s;
+  describe('EntitySelectors$Factory.create (Hero)', () => {
 
     // Selectors don't change during tests
     const selectors = createEntitySelectors<Hero, HeroSelectors>(heroMetadata);
 
     // Some immutable cache states
     const emptyCache: EntityCache = {};
+
     const initializedHeroCache: EntityCache = <any> {
-      // The state of the HeroCollection in this test suite as the EntityReducer might initialize it.
+      // The state of the HeroCollection in this test suite
+      // as the EntityReducer might initialize it.
       Hero: {ids: [], entities: {}, loading: false, filter: undefined, bar: 3.14 }
     };
 
@@ -113,15 +110,25 @@ describe('EntitySelectors$', () => {
     let heroes: Hero[];
     let loading: boolean;
 
+    // The store during tests will be the entity cache
+    let store: Store<{ entityCache: EntityCache}>;
+
     // Observable of state changes, which these tests simulate
-    let state$: BehaviorSubject<EntityCache>;
+    let state$: BehaviorSubject<{ entityCache: EntityCache }>;
+
+    const nextCacheState =
+      (cache: EntityCache) => state$.next({ entityCache: cache });
+
+    let factory: EntitySelectors$Factory;
 
     beforeEach(() => {
-      state$ = new BehaviorSubject(emptyCache);
-      store = new Store<EntityCache>(state$, null, null);
+      state$ = new BehaviorSubject({ entityCache: emptyCache });
+      store = new Store<{ entityCache: EntityCache }>(state$, null, null);
+      factory = new EntitySelectors$Factory('entityCache', store);
 
       // listen for changes to the hero collection
-      store.select('Hero').subscribe((c: HeroCollection) => collection = c);
+      store.select('entityCache', 'Hero')
+           .subscribe((c: HeroCollection) => collection = c);
     });
 
     function subscribeToSelectors(selectors$: HeroSelectors$) {
@@ -132,8 +139,7 @@ describe('EntitySelectors$', () => {
     }
 
     it('selectors$ emit default empty values when collection is undefined', () => {
-      const selectors$ = createEntitySelectors$<Hero, HeroSelectors$>(
-        'Hero', store, cacheSelector, selectors);
+      const selectors$ = factory.create<Hero, HeroSelectors$>('Hero', selectors);
 
       subscribeToSelectors(selectors$);
 
@@ -144,13 +150,12 @@ describe('EntitySelectors$', () => {
     });
 
     it('selectors$ emit expected values for initialized Hero collection', () => {
-      const selectors$ = createEntitySelectors$<Hero, HeroSelectors$>(
-        'Hero', store, cacheSelector, selectors);
+      const selectors$ = factory.create<Hero, HeroSelectors$>('Hero', selectors);
 
       subscribeToSelectors(selectors$);
 
       // prime the store for Hero first use as the EntityReducer would
-      state$.next(initializedHeroCache);
+      nextCacheState(initializedHeroCache);
 
       expect(heroes).toEqual([], 'no heroes when collection initialized');
       expect(foo).toBeUndefined('no foo when collection initialized');
@@ -158,13 +163,12 @@ describe('EntitySelectors$', () => {
     });
 
     it('selectors$ emit updated hero values', () => {
-      const selectors$ = createEntitySelectors$<Hero, HeroSelectors$>(
-        'Hero', store, cacheSelector, selectors);
+      const selectors$ = factory.create<Hero, HeroSelectors$>('Hero', selectors);
 
       subscribeToSelectors(selectors$);
 
       // prime the store for Hero first use as the EntityReducer would
-      state$.next(initializedHeroCache);
+      nextCacheState(initializedHeroCache);
 
       // set foo and add an entity as the reducer would
       collection = {
@@ -177,7 +181,7 @@ describe('EntitySelectors$', () => {
       };
 
       // update the store as a reducer would
-      state$.next({ ...emptyCache, Hero: collection});
+      nextCacheState({ ...emptyCache, Hero: collection});
 
       // Selectors$ should have emitted the updated values.
       expect(heroes).toEqual([{id: 42, name: 'Bob'}], 'added a hero');
@@ -200,9 +204,8 @@ describe('EntitySelectors$', () => {
         foo: 'foo foo',
         bar: 42
       };
-
-      const selectors$ = createEntitySelectors$<Hero, HeroSelectors$>(
-        'Hero', store, cacheSelector, selectors, defaultHeroState); // <- override default state
+      const selectors$ =
+        factory.create<Hero, HeroSelectors$>('Hero', selectors, defaultHeroState); // <- override default state
 
       subscribeToSelectors(selectors$);
 

@@ -5,11 +5,12 @@ import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { distinctUntilChanged, map, pluck } from 'rxjs/operators';
 
 import { commandDispatchTest } from './entity-dispatcher.spec';
-import { createEntityDispatcher } from './entity-dispatcher';
-import { EntityAction } from './entity.actions';
+import { EntityDispatcherFactory } from './entity-dispatcher';
+import { EntityAction, EntityActionFactory } from './entity.actions';
 import { EntityCollection } from './entity-definition';
 import { EntityDefinitionService } from './entity-definition.service';
 import { EntityService, EntityServiceFactory } from './entity.service';
+import { EntitySelectors$Factory } from './entity.selectors$';
 
 describe('EntityService', () => {
   describe('Commands', () => {
@@ -31,16 +32,22 @@ const heroMetadata = {
 function entityServiceTestSetup() {
   const testStore = new TestStore();
 
+  const entityActionFactory = new EntityActionFactory();
+
   const entityDefinitionService =
     new EntityDefinitionService([{Hero: heroMetadata}]);
 
+  const entityDispatcherFactory =
+    new EntityDispatcherFactory(entityActionFactory, <any> testStore);
+
+  const entitySelectors$Factory =
+    new EntitySelectors$Factory('TestEntityCache', <any> testStore);
+
   const entityServiceFactory = new EntityServiceFactory(
-    'entityCache', // cacheName
-    createEntityDispatcher,
-    null, // EntityActions
+    entityDispatcherFactory,
     entityDefinitionService,
-    <any> testStore
-  )
+    entitySelectors$Factory
+  );
 
   const dispatcher = entityServiceFactory.create<Hero>('Hero');
   return { dispatcher, testStore };
